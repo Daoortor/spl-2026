@@ -15,12 +15,16 @@ inductive SmallStep : Term → Term → Prop where
   | ctx_step (ctx : Ctx) : (t₁' = ctx.fill t₁) → (t₂' = ctx.fill t₂)
     → HeadSmallStep t₁ t₂ → SmallStep t₁' t₂'
 
-abbrev SmallSteps : Term → Term → Prop := Relation.ReflTransGen SmallStep
+-- abbrev SmallSteps : Term → Term → Prop := Relation.ReflTransGen SmallStep
 
-def SmallSteps.single : SmallStep t₁ t₂ → SmallSteps t₁ t₂ := by
-  intro st
-  apply Relation.ReflTransGen.single
-  assumption
+--def SmallSteps.single : SmallStep t₁ t₂ → SmallSteps t₁ t₂ := by
+  --intro st
+  --apply Relation.ReflTransGen.single
+  --assumption
+
+inductive SmallSteps : Term → Term → Prop where
+  | refl : SmallSteps t t
+  | tail : SmallStep t b → SmallSteps b u → SmallSteps t u
 
 infix:100 "~>" => SmallStep
 infix:100 "~>*" => SmallSteps
