@@ -15,30 +15,9 @@ inductive isRedex : Term → Prop
 lemma isRedex_iff_can_headSmallStep : (∃ t', HeadSmallStep t t') ↔ isRedex t := by
   apply Iff.intro
   · rintro ⟨t', h_st⟩
-    cases h_st <;> try constructor
+    cases h_st <;> constructor
   · intro t_redex
-    cases t_redex with
-    | ifTrue =>
-      rename_i t₂ t₃
-      exists t₂
-      constructor
-    | ifFalse =>
-      rename_i t₂ t₃
-      exists t₃
-      constructor
-    | predZero =>
-      exists .value (.nv .zero)
-      constructor
-    | predSucc =>
-      rename_i n
-      exists .value (.nv n)
-      constructor
-    | isZeroZero =>
-      exists .value .trueV
-      constructor
-    | isZeroSucc =>
-      exists .value .falseV
-      constructor
+    cases t_redex <;> exact ⟨_, by constructor⟩
 
 def isDecomposition (t : Term) (ctx : Ctx) (t' : Term) := isRedex t' ∧ t = ctx.fill t'
 
@@ -70,43 +49,33 @@ lemma decomposition_unique (t : Term) : isDecomposition t ctx₁ t₁ → isDeco
     rw [Ctx.fill] at t_eq₂
     rw [t_eq₂] at t_eq₁ t_eq₂
     exact decomposition_unique_with_hole t₂ ⟨t₁_redex, t_eq₁⟩ t₂_redex
-  case ifThenElse ctx₁' t₁ t₂ ih =>
+  all_goals cases ctx₁ <;> (
     rw [t_eq₁] at t_eq₂
-    cases ctx₁ <;> (
-      simp only [Ctx.fill] at t_eq₂
-      try cases t_eq₂
-    )
-    · rw [Ctx.fill] at t_eq₁
-      rw [← t_eq₁] at t₁_redex
-      rw [← Ctx.fill] at t_eq₁
-      let ⟨ctx_eq, t_eq⟩ := decomposition_unique_with_hole t ⟨t₂_redex, t_eq₁⟩ t₁_redex
-      cases ctx_eq
-    · rename_i t₂' t₁' ctx₂' t₁_copy t₂_copy
-      generalize h₁ : Ctx.fill t₁' ctx₁' = fill₁
-      generalize h₂ : Ctx.fill t₂' ctx₂' = fill₂
-      rw [h₁, h₂] at t_eq₂
-      cases t_eq₂
-      let ⟨ctx_eq, t_eq⟩ := ih fill₁ (Eq.symm h₂) (Eq.symm h₁)
-      constructor <;> simp only [ctx_eq, t_eq]
-  all_goals (
-    rename_i ctx₁' ih
-    rw [t_eq₁] at t_eq₂
-    cases ctx₁ <;> (
-      simp only [Ctx.fill] at t_eq₂
-      try cases t_eq₂
-    )
-    · rw [Ctx.fill] at t_eq₁
-      rw [← t_eq₁] at t₁_redex
-      rw [← Ctx.fill] at t_eq₁
-      let ⟨ctx_eq, t_eq⟩ := decomposition_unique_with_hole t ⟨t₂_redex, t_eq₁⟩ t₁_redex
-      cases ctx_eq
-    · rename_i ctx₂'
-      generalize h₁ : Ctx.fill t₁ ctx₂' = fill₁
-      generalize h₂ : Ctx.fill t₂ ctx₁' = fill₂
-      rw [h₁, h₂] at t_eq₂
-      cases t_eq₂
-      let ⟨ctx_eq, t_eq⟩ := ih fill₁ (Eq.symm h₁) (Eq.symm h₂)
-      constructor <;> simp only [ctx_eq, t_eq]
+    simp only [Ctx.fill] at t_eq₂
+    try cases t_eq₂
+  )
+  any_goals (
+    rw [Ctx.fill] at t_eq₁
+    rw [← t_eq₁] at t₁_redex
+    rw [← Ctx.fill] at t_eq₁
+    let ⟨ctx_eq, t_eq⟩ := decomposition_unique_with_hole t ⟨t₂_redex, t_eq₁⟩ t₁_redex
+    cases ctx_eq
+  )
+  · rename_i ctx₂' t₂' t₁' ih ctx₁' t₁_copy t₂_copy
+    generalize h₁ : Ctx.fill t₁ ctx₁' = fill₁
+    generalize h₂ : Ctx.fill t₂ ctx₂' = fill₂
+    rw [h₁, h₂] at t_eq₂
+    cases t_eq₂
+    let ⟨ctx_eq, t_eq⟩ := ih fill₁ (Eq.symm h₁) (Eq.symm h₂)
+    constructor <;> simp only [ctx_eq, t_eq]
+  any_goals (
+    rename_i ctx₁' ih ctx₂'
+    generalize h₁ : Ctx.fill t₁ ctx₂' = fill₁
+    generalize h₂ : Ctx.fill t₂ ctx₁' = fill₂
+    rw [h₁, h₂] at t_eq₂
+    cases t_eq₂
+    let ⟨ctx_eq, t_eq⟩ := ih fill₁ (Eq.symm h₁) (Eq.symm h₂)
+    constructor <;> simp only [ctx_eq, t_eq]
   )
 
 theorem smallStep_deterministic : (t ~> t₁) → (t ~> t₂) → (t₁ = t₂) := by
