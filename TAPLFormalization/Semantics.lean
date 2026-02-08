@@ -23,4 +23,4 @@ def SmallSteps.single : SmallStep t₁ t₂ → SmallSteps t₁ t₂ := by
   assumption
 
 infix:100 "~>" => SmallStep
-infix:100 "~~>" => SmallSteps
+infix:100 "~>*" => SmallSteps
