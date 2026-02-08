@@ -8,7 +8,10 @@ def isNF (t : Term) := ∀ (t' : Term), ¬(t ~> t')
 inductive isValue : Term → Prop where
   | value v : isValue (.value v)
 
-theorem isNF_iff_isValue : ∀ (t : Term), isNF t ↔ isValue t := by
+--theorem isNF_iff_isValue : ∀ (t : Term), isNF t ↔ isValue t := by
+  --sorry
+
+theorem isNF_if_isValue : ∀ (t : Term),  isValue t → isNF t := by
   sorry
 
 theorem NF_unique (tu : t ~>* u) (tu' : t ~>* u') (nfu : isNF u) (nfu' : isNF u') : u = u' := by
