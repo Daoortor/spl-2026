@@ -1,0 +1,10 @@
+name = "tapl-formalization"
+version = "0.1.0"
+defaultTargets = ["tapl-formalization"]
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+
+[[lean_lib]]
+name = "TAPLFormalization"
