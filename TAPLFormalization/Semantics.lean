@@ -3,24 +3,17 @@ import Mathlib.Logic.Relation
 import TAPLFormalization.AST
 import TAPLFormalization.Ctx
 
-inductive HeadSmallStep : Term → Term → Prop where
-  | ifTrue : HeadSmallStep (.ifThenElse (.value .trueV) t₂ t₃) t₂
-  | ifFalse : HeadSmallStep (.ifThenElse (.value .falseV) t₂ t₃) t₃
-  | predZero : HeadSmallStep (.pred (.value (.nv .zero))) (.value (.nv .zero))
-  | predSucc : HeadSmallStep (.pred (.succ (.value (.nv n)))) (.value (.nv n))
-  | isZeroZero : HeadSmallStep (.isZero (.value (.nv .zero))) (.value .trueV)
-  | isZeroSucc : HeadSmallStep (.isZero (.value (.nv (.succ n)))) (.value .falseV)
-
 inductive SmallStep : Term → Term → Prop where
-  | ctx_step (ctx : Ctx) : (t₁' = ctx.fill t₁) → (t₂' = ctx.fill t₂)
-    → HeadSmallStep t₁ t₂ → SmallStep t₁' t₂'
-
--- abbrev SmallSteps : Term → Term → Prop := Relation.ReflTransGen SmallStep
-
---def SmallSteps.single : SmallStep t₁ t₂ → SmallSteps t₁ t₂ := by
-  --intro st
-  --apply Relation.ReflTransGen.single
-  --assumption
+  | IfTrue : SmallStep (.ifThenElse .trueV t₂ t₃) t₂
+  | IfFalse : SmallStep (.ifThenElse .falseV t₂ t₃) t₃
+  | If : SmallStep t₁ t₂ → SmallStep (.ifThenElse t₁ a b) (.ifThenElse t₂ a b)
+  | Succ :  SmallStep t₁ t₂ → SmallStep (.succ t₁) (.succ t₂)
+  | PredZero : SmallStep (.pred .zero) .zero
+  | PredSucc : NumericValue nv → SmallStep (.pred (.succ nv)) nv
+  | Pred : SmallStep t₁ t₂ → SmallStep (.pred t₁) (.pred t₂)
+  | IsZeroZero : SmallStep (.isZero .zero) .trueV
+  | IsZeroSucc : NumericValue nv → SmallStep (.isZero (.succ nv)) .falseV
+  | IsZero : SmallStep t₁ t₂ → SmallStep (.isZero t₁) (.isZero t₂)
 
 inductive SmallSteps : Term → Term → Prop where
   | refl : SmallSteps t t
