@@ -9,11 +9,11 @@ inductive Term where
   | pred : Term → Term
   | isZero : Term → Term
 
-inductive IsNumericValue : Term → Prop where
+inductive Term.IsNumericValue : Term → Prop where
   | zero : IsNumericValue .zero
   | succ : IsNumericValue t → IsNumericValue (.succ t)
 
-inductive IsValue : Term → Prop where
+inductive Term.IsValue : Term → Prop where
   | trueV : IsValue .trueV
   | falseV : IsValue .falseV
   | numericV : IsNumericValue t → IsValue t

@@ -1,6 +1,7 @@
 import Mathlib.Logic.Relation
 
 import TAPLFormalization.AST
+import TAPLFormalization.Common
 
 inductive SmallStep : Term → Term → Prop where
   | IfTrue : SmallStep (.ifThenElse .trueV t₂ t₃) t₂
@@ -8,27 +9,13 @@ inductive SmallStep : Term → Term → Prop where
   | If : SmallStep t₁ t₂ → SmallStep (.ifThenElse t₁ a b) (.ifThenElse t₂ a b)
   | Succ :  SmallStep t₁ t₂ → SmallStep (.succ t₁) (.succ t₂)
   | PredZero : SmallStep (.pred .zero) .zero
-  | PredSucc : IsNumericValue nv → SmallStep (.pred (.succ nv)) nv
+  | PredSucc : nv.IsNumericValue → SmallStep (.pred (.succ nv)) nv
   | Pred : SmallStep t₁ t₂ → SmallStep (.pred t₁) (.pred t₂)
   | IsZeroZero : SmallStep (.isZero .zero) .trueV
-  | IsZeroSucc : IsNumericValue nv → SmallStep (.isZero (.succ nv)) .falseV
+  | IsZeroSucc : nv.IsNumericValue → SmallStep (.isZero (.succ nv)) .falseV
   | IsZero : SmallStep t₁ t₂ → SmallStep (.isZero t₁) (.isZero t₂)
 
-inductive SmallSteps : Term → Term → Prop where
-  | refl : SmallSteps t t
-  | tail : SmallStep t b → SmallSteps b u → SmallSteps t u
+abbrev SmallSteps := ReflTransGen' SmallStep
 
 infix:100 "~>" => SmallStep
 infix:100 "~>*" => SmallSteps
-
-def SmallSteps.single (st : t ~> t') : t ~>* t' := by
-  exact .tail st .refl
-
-instance SmallSteps.trans : Trans SmallSteps SmallSteps SmallSteps where
-  trans sts₁ sts₂ := by
-    induction sts₁ with
-    | refl => assumption
-    | tail st sts ih => exact SmallSteps.tail st (ih sts₂)
-
-instance SmallSteps.trans' : Trans SmallSteps SmallStep SmallSteps where
-  trans sts st := SmallSteps.trans.trans sts (.single st)

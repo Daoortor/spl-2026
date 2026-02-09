@@ -1,6 +1,6 @@
 import TAPLFormalization.Semantics
 
-lemma no_step_from_NV : IsNumericValue t → ∀ t', ¬(t ~> t') := by
+lemma no_step_from_NV : t.IsNumericValue → ∀ t', ¬(t ~> t') := by
   intro t_nv t'
   induction t_nv generalizing t' with
   | zero => intro; contradiction
@@ -17,17 +17,17 @@ theorem smallStep_deterministic : (t₁ ~> t₂) → (t₁ ~> t₃) → (t₂ = 
   -- When st₂ and st₃ are from the same constructor, we can apply (one of) ih
   any_goals (congr; apply_assumption <;> assumption)
   -- Otherwise, we have a step t~>t', where t is an NV -- contradiction
-  all_goals grind [no_step_from_NV, IsNumericValue]
+  all_goals grind [no_step_from_NV, Term.IsNumericValue]
 
 def isNF (t : Term) := ∀ (t' : Term), ¬(t ~> t')
 
-theorem isNF_if_isValue : ∀ (t : Term),  IsValue t → isNF t := by
+theorem isNF_if_isValue : ∀ (t : Term),  t.IsValue → isNF t := by
   intro t t_value t' bad_step
   cases t_value <;> try contradiction
   rename_i t_nv
   exact no_step_from_NV t_nv t' bad_step
 
-theorem boolean_isNF_iff_isValue : ∀ (t : Term), BooleanTerm t → (isNF t ↔ IsValue t) := by
+theorem boolean_isNF_iff_isValue : ∀ (t : Term), BooleanTerm t → (isNF t ↔ t.IsValue) := by
   intro t t_boolean
   apply Iff.intro
   · intro t_nf
@@ -84,12 +84,3 @@ decreasing_by
   rename_i a
   clear a
   induction st <;> grind [isNF]
-
-lemma smallSteps_in_context (f : Term → Term) : (∀ {t t'}, t ~> t' → (f t) ~> (f t'))
-  → t ~>* t' → (f t) ~>* (f t') := by
-  intro h_st t_sts_t'
-  induction t_sts_t' with
-  | refl => constructor
-  | tail st sts ih =>
-    rename_i t₁ t₂ t₃
-    exact SmallSteps.tail (h_st st) ih
