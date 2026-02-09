@@ -9,14 +9,14 @@ inductive Term where
   | pred : Term → Term
   | isZero : Term → Term
 
-inductive NumericValue : Term → Prop where
-  | zero : NumericValue .zero
-  | succ : NumericValue t → NumericValue (.succ t)
+inductive IsNumericValue : Term → Prop where
+  | zero : IsNumericValue .zero
+  | succ : IsNumericValue t → IsNumericValue (.succ t)
 
-inductive Value : Term → Prop where
-  | trueV : Value .trueV
-  | falseV : Value .falseV
-  | numericV : NumericValue t → Value t
+inductive IsValue : Term → Prop where
+  | trueV : IsValue .trueV
+  | falseV : IsValue .falseV
+  | numericV : IsNumericValue t → IsValue t
 
 inductive BooleanTerm : Term → Prop where
   | trueV : BooleanTerm .trueV

@@ -1,7 +1,6 @@
 import Mathlib.Logic.Relation
 
 import TAPLFormalization.AST
-import TAPLFormalization.Ctx
 
 inductive SmallStep : Term → Term → Prop where
   | IfTrue : SmallStep (.ifThenElse .trueV t₂ t₃) t₂
@@ -9,10 +8,10 @@ inductive SmallStep : Term → Term → Prop where
   | If : SmallStep t₁ t₂ → SmallStep (.ifThenElse t₁ a b) (.ifThenElse t₂ a b)
   | Succ :  SmallStep t₁ t₂ → SmallStep (.succ t₁) (.succ t₂)
   | PredZero : SmallStep (.pred .zero) .zero
-  | PredSucc : NumericValue nv → SmallStep (.pred (.succ nv)) nv
+  | PredSucc : IsNumericValue nv → SmallStep (.pred (.succ nv)) nv
   | Pred : SmallStep t₁ t₂ → SmallStep (.pred t₁) (.pred t₂)
   | IsZeroZero : SmallStep (.isZero .zero) .trueV
-  | IsZeroSucc : NumericValue nv → SmallStep (.isZero (.succ nv)) .falseV
+  | IsZeroSucc : IsNumericValue nv → SmallStep (.isZero (.succ nv)) .falseV
   | IsZero : SmallStep t₁ t₂ → SmallStep (.isZero t₁) (.isZero t₂)
 
 inductive SmallSteps : Term → Term → Prop where
