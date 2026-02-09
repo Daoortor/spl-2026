@@ -84,3 +84,12 @@ decreasing_by
   rename_i a
   clear a
   induction st <;> grind [isNF]
+
+lemma smallSteps_in_context (f : Term → Term) : (∀ {t t'}, t ~> t' → (f t) ~> (f t'))
+  → t ~>* t' → (f t) ~>* (f t') := by
+  intro h_st t_sts_t'
+  induction t_sts_t' with
+  | refl => constructor
+  | tail st sts ih =>
+    rename_i t₁ t₂ t₃
+    exact SmallSteps.tail (h_st st) ih

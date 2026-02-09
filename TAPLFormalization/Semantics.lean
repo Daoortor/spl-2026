@@ -20,3 +20,15 @@ inductive SmallSteps : Term → Term → Prop where
 
 infix:100 "~>" => SmallStep
 infix:100 "~>*" => SmallSteps
+
+def SmallSteps.single (st : t ~> t') : t ~>* t' := by
+  exact .tail st .refl
+
+instance SmallSteps.trans : Trans SmallSteps SmallSteps SmallSteps where
+  trans sts₁ sts₂ := by
+    induction sts₁ with
+    | refl => assumption
+    | tail st sts ih => exact SmallSteps.tail st (ih sts₂)
+
+instance SmallSteps.trans' : Trans SmallSteps SmallStep SmallSteps where
+  trans sts st := SmallSteps.trans.trans sts (.single st)
