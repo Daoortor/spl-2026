@@ -1,5 +1,5 @@
-import TAPLFormalization.Semantics
-import TAPLFormalization.SemanticsTheorems
+import TAPLFormalization.«01-peano».Semantics
+import TAPLFormalization.«01-peano».SemanticsTheorems
 
 import Mathlib.Tactic.DefEqTransformations
 

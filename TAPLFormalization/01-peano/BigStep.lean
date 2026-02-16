@@ -1,6 +1,6 @@
-import TAPLFormalization.AST
-import TAPLFormalization.Semantics
-import TAPLFormalization.SemanticsTheorems
+import TAPLFormalization.«01-peano».AST
+import TAPLFormalization.«01-peano».Semantics
+import TAPLFormalization.«01-peano».SemanticsTheorems
 
 inductive BigStep : Term → Term → Prop where
   | value : v.IsValue → BigStep v v

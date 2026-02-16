@@ -1,4 +1,4 @@
-import TAPLFormalization.Semantics
+import TAPLFormalization.«01-peano».Semantics
 
 lemma no_step_from_NV : t.IsNumericValue → ∀ t', ¬(t ~> t') := by
   intro t_nv t'

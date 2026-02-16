@@ -1,7 +1,7 @@
 import Mathlib.Logic.Relation
 
-import TAPLFormalization.AST
-import TAPLFormalization.Common
+import TAPLFormalization.«01-peano».AST
+import TAPLFormalization.«01-peano».Common
 
 inductive SmallStep : Term → Term → Prop where
   | IfTrue : SmallStep (.ifThenElse .trueV t₂ t₃) t₂
