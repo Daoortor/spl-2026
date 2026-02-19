@@ -15,6 +15,9 @@ theorem ReflTransGen'.trans (hab : ReflTransGen' r a b) (hbc : ReflTransGen' r b
 theorem ReflTransGen'.trans' (hab : ReflTransGen' r a b) (hbc : r b c) :
   ReflTransGen' r a c := trans hab (.single hbc)
 
+instance : Trans r r (ReflTransGen' r) where
+  trans r₁ r₂ := .tail r₁ (.single r₂)
+
 theorem ReflTransGen'.lift (f : α → β) (h : ∀ {a b}, r a b → p (f a) (f b))
   (hab : ReflTransGen' r a b) : ReflTransGen' p (f a) (f b) := by
   induction hab with
