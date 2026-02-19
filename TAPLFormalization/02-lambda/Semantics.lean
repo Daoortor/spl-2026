@@ -17,38 +17,94 @@ def subst' (depth : ℕ) (s : IndexedTerm) : IndexedTerm → IndexedTerm
 
 def subst := subst' 0
 
-inductive FB.SmallStep : IndexedTerm → IndexedTerm → Prop
-  | appBody : FB.SmallStep t₁ t₁' → FB.SmallStep (.app t₁ t₂) (.app t₁' t₂)
-  | appArg : FB.SmallStep t₂ t₂' → FB.SmallStep (.app t₁ t₂) (.app t₁ t₂')
-  | absCong : FB.SmallStep t t' → FB.SmallStep (.abs t) (.abs t')
-  | appAbs : FB.SmallStep (.app (.abs t₁) t₂) (subst t₂ t₁)
+structure Semantics (T : Type u) where
+  SmallStep : T → T → Prop
+  isNF : T → Prop
+
+structure DeterministicSemantics (T : Type u) extends Semantics T where
+  next : T → Option T
+  next_none_iff_isNF : next t = none ↔ isNF t
+
+def Semantics.SmallSteps (s : Semantics T) : T → T → Prop := ReflTransGen' s.SmallStep
+def DeterministicSemantics.next_or_id (s : DeterministicSemantics T) (t : T) : T := (s.next t).elim t id
+def DeterministicSemantics.run (s : DeterministicSemantics T) (gas : ℕ) (t : T) : T := gas.repeat s.next_or_id t
+
+namespace FB
+  inductive SmallStep : IndexedTerm → IndexedTerm → Prop
+    | appBody : SmallStep t₁ t₁' → SmallStep (.app t₁ t₂) (.app t₁' t₂)
+    | appArg : SmallStep t₂ t₂' → SmallStep (.app t₁ t₂) (.app t₁ t₂')
+    | absCong : SmallStep t t' → SmallStep (.abs t) (.abs t')
+    | appAbs : SmallStep (.app (.abs t₁) t₂) (subst t₂ t₁)
+
+  mutual
+    inductive Neutral : IndexedTerm → Prop
+      | freeV : Neutral (.freeV x)
+      | boundV : Neutral (.boundV n)
+      | app : Neutral t₁ → isNF t₂ → Neutral (.app t₁ t₂)
+
+    inductive isNF : IndexedTerm → Prop
+      | neutral : Neutral t → isNF t
+      | abs : isNF t → isNF (.abs t)
+  end
+end FB
+
+def FullBeta : Semantics IndexedTerm where
+  SmallStep := FB.SmallStep
+  isNF := FB.isNF
 
 namespace NO
-mutual
+  inductive SmallStep : IndexedTerm → IndexedTerm → Prop
+    | appBody : SmallStep (.app t₁ t₂) t' → SmallStep (.app (.app t₁ t₂) t₃) (.app t' t₃)
+    | appArg : FB.isNF t₁ → SmallStep t₂ t₂' → SmallStep (.app t₁ t₂) (.app t₁ t₂')
+    | absCong : SmallStep t t' → SmallStep (.abs t) (.abs t')
+    | appAbs : SmallStep (.app (.abs t₁) t₂) (subst t₂ t₁)
+end NO
+
+def NormalOrder : Semantics IndexedTerm where
+  SmallStep := NO.SmallStep
+  isNF := FB.isNF
+
+namespace CN
+  inductive SmallStep : IndexedTerm → IndexedTerm → Prop
+    | appBody : SmallStep t₁ t₁' → SmallStep (.app t₁ t₂) (.app t₁' t₂)
+    | appAbs : SmallStep (.app (.abs t₁) t₂) (subst t₂ t₁)
+
   inductive Neutral : IndexedTerm → Prop
     | freeV : Neutral (.freeV x)
     | boundV : Neutral (.boundV n)
-    | app : Neutral t₁ → NF t₂ → Neutral (.app t₁ t₂)
+    | app : Neutral t₁ → Neutral (.app t₁ t₂)
 
-  inductive NF : IndexedTerm → Prop
-    | neutral : Neutral t → NF t
-    | abs : NF t → NF (.abs t)
-end
+  inductive isNF : IndexedTerm → Prop
+    | neutral : Neutral t → isNF t
+    | abs : isNF (.abs t)
+end CN
 
-inductive SmallStep : IndexedTerm → IndexedTerm → Prop
-  | appBody : SmallStep (.app t₁ t₂) t' → SmallStep (.app (.app t₁ t₂) t₃) (.app t' t₃)
-  | appArg : NF t₁ → SmallStep t₂ t₂' → SmallStep (.app t₁ t₂) (.app t₁ t₂')
-  | absCong : SmallStep t t' → SmallStep (.abs t) (.abs t')
-  | appAbs : SmallStep (.app (.abs t₁) t₂) (subst t₂ t₁)
-end NO
+def CallByName : Semantics IndexedTerm where
+  SmallStep := CN.SmallStep
+  isNF := CN.isNF
 
-inductive CN.SmallStep : IndexedTerm → IndexedTerm → Prop
-  | appBody : CN.SmallStep t₁ t₁' → CN.SmallStep (.app t₁ t₂) (.app t₁' t₂)
-  | appAbs : SmallStep (.app (.abs t₁) t₂) (subst t₂ t₁)
+theorem CallByName.isNF_iff_no_step : CallByName.isNF t ↔ ¬(∃ t', CallByName.SmallStep t t') := by
+  constructor
+  · sorry
+  · sorry
 
-inductive CV.SmallStep : IndexedTerm → IndexedTerm → Prop
-  | appBody : CV.SmallStep t₁ t₁' → CV.SmallStep (.app t₁ t₂) (.app t₁' t₂)
-  | appArg : CV.SmallStep t₂ t₂' → CV.SmallStep (.app (.abs t₁) t₂) (.app (.abs t₁) t₂')
-  | appAbs : (s = subst (.abs t₂) t₁) → CV.SmallStep (.app (.abs t₁) (.abs t₂)) s
+namespace CV
+  inductive SmallStep : IndexedTerm → IndexedTerm → Prop
+    | appBody : SmallStep t₁ t₁' → SmallStep (.app t₁ t₂) (.app t₁' t₂)
+    | appArg : SmallStep t₂ t₂' → SmallStep (.app (.abs t₁) t₂) (.app (.abs t₁) t₂')
+    | appAbs : (s = subst (.abs t₂) t₁) → SmallStep (.app (.abs t₁) (.abs t₂)) s
 
-abbrev CV.SmallSteps := ReflTransGen' CV.SmallStep
+  abbrev SmallSteps := ReflTransGen' SmallStep
+
+  def next : IndexedTerm → Option IndexedTerm
+    | .freeV _ => none
+    | .boundV _ => none
+    | .abs _ => none
+    | .app (.abs t₁) (.abs t₂) => subst (.abs t₂) t₁
+    | .app (.abs t₁) t₂ => (.app (.abs t₁)) <$> (next t₂)
+    | .app t₁ t₂ => (.app · t₂) <$> (next t₁)
+
+  def next_or_id (t : IndexedTerm) : IndexedTerm := (next t).elim t id
+
+  def getNF (gas : ℕ) (t : IndexedTerm) : IndexedTerm := gas.repeat next_or_id t
+end CV
