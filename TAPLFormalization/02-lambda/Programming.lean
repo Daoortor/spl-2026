@@ -1,4 +1,5 @@
 import TAPLFormalization.«02-lambda».Semantics
+import TAPLFormalization.«02-lambda».SemanticsTheorems
 
 infixl:100 "|$|" => LambdaTerm.app
 abbrev la := LambdaTerm.abs

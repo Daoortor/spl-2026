@@ -3,6 +3,7 @@ import TAPLFormalization.«01-peano».SemanticsTheorems
 
 import Mathlib.Tactic.DefEqTransformations
 
+namespace Term
 inductive TermWrong
   | wrong : TermWrong
   | trueV : TermWrong
@@ -154,3 +155,4 @@ theorem getsStuck_iff_gets_wrong : GetsStuck t ↔ SmallSteps' (embed t) .wrong 
   constructor
   · sorry
   · sorry
+end Term
