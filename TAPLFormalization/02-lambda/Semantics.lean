@@ -57,10 +57,30 @@ def FullBeta : Semantics IndexedTerm where
 
 namespace NO
   inductive SmallStep : IndexedTerm → IndexedTerm → Prop
-    | appBody : SmallStep t₁ t₁' → SmallStep (.app t₁ t₂) (.app t₁' t₂)
-    | appArg : FB.Neutral t₁ → SmallStep t₂ t₂' → SmallStep (.app t₁ t₂) (.app t₁ t₂')
+    | appBody : SmallStep (.app t₁ t₂) t' → SmallStep (.app (.app t₁ t₂) t₃) (.app t' t₃)
+    | appArg : FB.isNF t₁ → SmallStep t₂ t₂' → SmallStep (.app t₁ t₂) (.app t₁ t₂')
     | absCong : SmallStep t t' → SmallStep (.abs t) (.abs t')
     | appAbs : s = subst t₂ t₁ → SmallStep (.app (.abs t₁) t₂) s
+
+  mutual
+    def next_app (t₁ : IndexedTerm) (t₂ : IndexedTerm) : Option IndexedTerm := match t₁, t₂ with
+      | .abs t₁, t₂ => subst t₂ t₁
+      | t₁, t₂ => (next t₁).elim ((.app t₁) <$> (next t₂)) (some ∘ (.app · t₂))
+    termination_by (sizeOf t₁ + sizeOf t₂, 0)
+    decreasing_by
+      constructor
+      all_goals grind [IndexedTerm, SizeOf.sizeOf, IndexedTerm._sizeOf_1]
+
+    def next (t : IndexedTerm) : Option IndexedTerm := match t with
+      | .freeV _ => none
+      | .boundV _ => none
+      | .abs t => .abs <$> (next t)
+      | .app t₁ t₂ => next_app t₁ t₂
+    termination_by (sizeOf t, 1)
+  end
+
+  lemma smallStep_deterministic : SmallStep t₁ t₂ ↔ next t₁ = .some t₂ := by
+    sorry
 end NO
 
 def NormalOrder : Semantics IndexedTerm where
@@ -199,14 +219,14 @@ namespace CV
   end
 
   lemma smallStep_deterministic : SmallStep t₁ t₂ ↔ next t₁ = .some t₂ := by
-  constructor
-  · intro st
-    induction st <;> rw [next, next_app] <;> try grind [next]
-  · intro next_eq
-    induction t₁ generalizing t₂ <;> (rw [next] at next_eq; try contradiction)
-    case app body arg body_ih arg_ih =>
-      fun_cases next_app <;> rw [next_app] at next_eq <;> try assumption
-      all_goals grind [Option.map_eq_some_iff, SmallStep]
+    constructor
+    · intro st
+      induction st <;> rw [next, next_app] <;> try grind [next]
+    · intro next_eq
+      induction t₁ generalizing t₂ <;> (rw [next] at next_eq; try contradiction)
+      case app body arg body_ih arg_ih =>
+        fun_cases next_app <;> rw [next_app] at next_eq <;> try assumption
+        all_goals grind [Option.map_eq_some_iff, SmallStep]
 end CV
 
 def CallByValue : DeterministicSemantics IndexedTerm where

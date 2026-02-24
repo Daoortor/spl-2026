@@ -39,7 +39,25 @@ lemma subst_addDepth : subst t₁ (addDepth 1 t₂) = t₂ := by
 lemma addDepth_zero : addDepth 0 t = t := by
   induction t <;> grind [addDepth]
 
-lemma soundness_ltob_single : BR lt bt → BR lz bz → bt ~> bz → lt ~no~>* lz := by
+lemma steps_preserve_abs : .abs t ~no~>* t' → ∃ t'_b, t' = .abs t'_b := by
+  intro sts
+  generalize h : IndexedTerm.abs t = t₁ at sts
+  induction sts generalizing t
+  case refl => rw [← h]; exact ⟨t, rfl⟩
+  case tail t₁ t₁' t' st sts ih =>
+    rw [← h] at st
+    cases st
+    exact ih rfl
+
+inductive NO'.SmallStep : IndexedTerm → IndexedTerm → Prop
+    | appBody : SmallStep (.app t₁ t₂) t' → SmallStep (.app (.app t₁ t₂) t₃) (.app t' t₃)
+    | appArg : FB.isNF t₁ → SmallStep t₂ t₂' → SmallStep (.app t₁ t₂) (.app t₁ t₂')
+    | appAbs : s = subst t₂ t₁ → SmallStep (.app (.abs t₁) t₂) s
+
+infix:100 " ~no'~> " => NO'.SmallStep
+infix:100 " ~no'~>* " => ReflTransGen' NO'.SmallStep
+
+lemma soundness_ltob_single : BR lt bt → BR lz bz → bt ~> bz → lt ~no'~>* lz := by
   intro lt_r_bt lz_r_bz b_st
   induction lt_r_bt generalizing lz bz <;> cases b_st
   case IfTrue lc lt bt le be t_r e_r t_ih e_ih c_r _ =>
@@ -47,28 +65,29 @@ lemma soundness_ltob_single : BR lt bt → BR lz bz → bt ~> bz → lt ~no~>* l
     let lz_eq := br_deterministic lz_r_bz t_r
     rw [lz_eq]
     calc
-      _ ~no~> .app (.abs (addDepth 1 lt)) le := .appBody (.appAbs (by simp [subst, subst']))
-      _ ~no~> _ := .appAbs (by rw [subst_addDepth])
+      _ ~no'~> .app (.abs (addDepth 1 lt)) le := .appBody (.appAbs (by simp [subst, subst']))
+      _ ~no'~> _ := .appAbs (by rw [subst_addDepth])
   case IfFalse lc lt bt le be t_r e_r t_ih e_ih c_r _ =>
     cases c_r
     let lz_eq := br_deterministic lz_r_bz e_r
     rw [lz_eq]
     calc
-      _ ~no~> .app (.abs (.boundV 0)) le := .appBody (.appAbs (by simp [subst, subst']))
-      _ ~no~> _ := .appAbs (by rw [subst, subst', addDepth_zero])
+      _ ~no'~> .app (.abs (.boundV 0)) le := .appBody (.appAbs (by simp [subst, subst']))
+      _ ~no'~> _ := .appAbs (by rw [subst, subst', addDepth_zero])
   case If lc bc lt bt le be c_r t_r e_r c_ih t_ih e_ih bc' st =>
-    cases lz_r_bz with
-    | cond c'_r t'_r e'_r =>
+    cases lz_r_bz
+    case cond c'_r t'_r e'_r =>
       let c_sts := c_ih c'_r st
       let lt_eq := br_deterministic t'_r t_r
       let le_eq := br_deterministic e'_r e_r
       rw [lt_eq, le_eq]
-      let f (t : IndexedTerm) := IndexedTerm.app (.app t lt) le
-      let cons {t₁ t₂ : IndexedTerm} (st : t₁ ~no~> t₂) : (f t₁) ~no~> (f t₂) :=
-        NO.SmallStep.appBody (NO.SmallStep.appBody st)
-      apply ReflTransGen'.lift f cons c_sts
+      clear_value c_sts
+      clear c_r c_ih
+      induction c_sts
+      case refl => constructor
+      case tail lc lc' lc'' st sts' ih => grind [IndexedTerm, NO'.SmallStep, ReflTransGen']
 
-theorem soundness_ltob : BR lt bt → BR lz bz → bt ~>* bz → lt ~no~>* lz := by
+theorem soundness_ltob : BR lt bt → BR lz bz → bt ~>* bz → lt ~no'~>* lz := by
   intro lt_r_bt lz_r_bz b_sts
   induction b_sts generalizing lt lz
   case refl => grind [br_deterministic, ReflTransGen']
