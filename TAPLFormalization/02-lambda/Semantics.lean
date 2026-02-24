@@ -28,7 +28,7 @@ structure DeterministicSemantics (T : Type u) extends Semantics T where
   deterministic : SmallStep t₁ t₂ ↔ next t₁ = .some t₂
   isNF_iff_no_step : isNF t ↔ ¬(∃ t', SmallStep t t')
 
-def Semantics.SmallSteps (s : Semantics T) : T → T → Prop := ReflTransGen' s.SmallStep
+abbrev Semantics.SmallSteps (s : Semantics T) : T → T → Prop := ReflTransGen' s.SmallStep
 def DeterministicSemantics.next_or_id (s : DeterministicSemantics T) (t : T) : T := (s.next t).elim t id
 def DeterministicSemantics.run (s : DeterministicSemantics T) (gas : ℕ) (t : T) : T := gas.repeat s.next_or_id t
 
@@ -37,7 +37,7 @@ namespace FB
     | appBody : SmallStep t₁ t₁' → SmallStep (.app t₁ t₂) (.app t₁' t₂)
     | appArg : SmallStep t₂ t₂' → SmallStep (.app t₁ t₂) (.app t₁ t₂')
     | absCong : SmallStep t t' → SmallStep (.abs t) (.abs t')
-    | appAbs : SmallStep (.app (.abs t₁) t₂) (subst t₂ t₁)
+    | appAbs : s = subst t₂ t₁ → SmallStep (.app (.abs t₁) t₂) s
 
   mutual
     inductive Neutral : IndexedTerm → Prop
@@ -57,10 +57,10 @@ def FullBeta : Semantics IndexedTerm where
 
 namespace NO
   inductive SmallStep : IndexedTerm → IndexedTerm → Prop
-    | appBody : SmallStep (.app t₁ t₂) t' → SmallStep (.app (.app t₁ t₂) t₃) (.app t' t₃)
-    | appArg : FB.isNF t₁ → SmallStep t₂ t₂' → SmallStep (.app t₁ t₂) (.app t₁ t₂')
+    | appBody : SmallStep t₁ t₁' → SmallStep (.app t₁ t₂) (.app t₁' t₂)
+    | appArg : FB.Neutral t₁ → SmallStep t₂ t₂' → SmallStep (.app t₁ t₂) (.app t₁ t₂')
     | absCong : SmallStep t t' → SmallStep (.abs t) (.abs t')
-    | appAbs : SmallStep (.app (.abs t₁) t₂) (subst t₂ t₁)
+    | appAbs : s = subst t₂ t₁ → SmallStep (.app (.abs t₁) t₂) s
 end NO
 
 def NormalOrder : Semantics IndexedTerm where
@@ -215,3 +215,12 @@ def CallByValue : DeterministicSemantics IndexedTerm where
   next := CV.next
   deterministic := CV.smallStep_deterministic
   isNF_iff_no_step := CV.isNF_iff_no_step
+
+infix:100 " ~fb~> " => FB.SmallStep
+infix:100 " ~fb~>* " => FullBeta.SmallSteps
+infix:100 " ~no~> " => NO.SmallStep
+infix:100 " ~no~>* " => NormalOrder.SmallSteps
+infix:100 " ~cbn~> " => CN.SmallStep
+infix:100 " ~cbn~>* " => CallByName.SmallSteps
+infix:100 " ~cbv~> " => CV.SmallStep
+infix:100 " ~cbv~>* " => CallByValue.SmallSteps
