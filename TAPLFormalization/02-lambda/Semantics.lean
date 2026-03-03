@@ -58,7 +58,7 @@ def FullBeta : Semantics IndexedTerm where
 namespace NO
   inductive SmallStep : IndexedTerm → IndexedTerm → Prop
     | appBody : SmallStep (.app t₁ t₂) t' → SmallStep (.app (.app t₁ t₂) t₃) (.app t' t₃)
-    | appArg : FB.isNF t₁ → SmallStep t₂ t₂' → SmallStep (.app t₁ t₂) (.app t₁ t₂')
+    | appArg : FB.Neutral t₁ → SmallStep t₂ t₂' → SmallStep (.app t₁ t₂) (.app t₁ t₂')
     | absCong : SmallStep t t' → SmallStep (.abs t) (.abs t')
     | appAbs : s = subst t₂ t₁ → SmallStep (.app (.abs t₁) t₂) s
 
@@ -79,13 +79,82 @@ namespace NO
     termination_by (sizeOf t, 1)
   end
 
+  lemma isNF_iff_no_step : FB.isNF t ↔ ¬(∃ t', SmallStep t t') := by
+    constructor
+    · apply FB.isNF.rec
+      case motive_1 => exact fun t t_ne => ¬∃ t', SmallStep t t'
+      all_goals grind [SmallStep, FB.Neutral]
+    · intro no_st
+      induction t <;> try grind [FB.isNF, FB.Neutral, SmallStep, subst]
+      case app body arg body_ih arg_ih =>
+        constructor
+        let body_ne : FB.Neutral body := by
+          suffices h : FB.isNF body by
+            cases h
+            · assumption
+            · cases no_st ⟨_, .appAbs rfl⟩
+          apply body_ih
+          intro ⟨body', body_st⟩
+          apply no_st
+          cases body <;> try grind [SmallStep]
+          · exact ⟨_, .appBody body_st⟩
+          · exact ⟨_, .appAbs rfl⟩
+        apply FB.Neutral.app
+        · assumption
+        · apply arg_ih
+          intro ⟨arg', arg_st⟩
+          apply no_st
+          exact ⟨_, .appArg body_ne arg_st⟩
+      case abs body ih =>
+        apply FB.isNF.abs
+        apply ih
+        intro ⟨body', st⟩
+        apply no_st
+        exact ⟨_, .absCong st⟩
+
   lemma smallStep_deterministic : SmallStep t₁ t₂ ↔ next t₁ = .some t₂ := by
-    sorry
+    induction t₁ generalizing t₂
+    · grind [SmallStep, next]
+    · grind [SmallStep, next]
+    · rename_i t₁_body t₁_arg ih_body ih_arg
+      constructor
+      · intro st
+        cases st
+        · grind [next, next_app]
+        · rw [next]
+          rename_i t₁_arg' body_ne arg_st
+          fun_cases next_app
+          · cases body_ne
+          · cases h : next t₁_body
+            · simp [ih_arg.mp arg_st]
+            · let body_st := ih_body.mpr h
+              cases isNF_iff_no_step.mp (.neutral body_ne) ⟨_, body_st⟩
+        · grind [next, next_app]
+      · intro t₁_next
+        rw [next] at t₁_next
+        fun_cases next_app
+        · grind [SmallStep, next_app]
+        · rw [next_app] at t₁_next <;> try grind
+          cases h : next t₁_body
+          · let body_NF : FB.isNF t₁_body := by grind [isNF_iff_no_step]
+            simp [h] at t₁_next
+            grind [FB.isNF, SmallStep]
+          · grind [SmallStep]
+    · rename_i body ih
+      constructor
+      · grind [SmallStep, next]
+      · cases h : next body <;> grind [SmallStep, next]
+
 end NO
 
-def NormalOrder : Semantics IndexedTerm where
+def NormalOrder : DeterministicSemantics IndexedTerm where
   SmallStep := NO.SmallStep
   isNF := FB.isNF
+  next := NO.next
+  deterministic := NO.smallStep_deterministic
+  isNF_iff_no_step := NO.isNF_iff_no_step
+
+#eval NormalOrder.run 1 $ .abs (.abs (.app (.abs (.app (.boundV 0) (.boundV 2))) (.app (.boundV 0) (.boundV 1))))
 
 namespace CN
   inductive SmallStep : IndexedTerm → IndexedTerm → Prop

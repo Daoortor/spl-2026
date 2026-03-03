@@ -13,6 +13,10 @@ inductive Term.IsNumericValue : Term → Prop where
   | zero : IsNumericValue .zero
   | succ : IsNumericValue t → IsNumericValue (.succ t)
 
+inductive Term.IsBooleanValue : Term → Prop where
+  | trueV : IsBooleanValue .trueV
+  | falseV : IsBooleanValue .falseV
+
 inductive Term.IsValue : Term → Prop where
   | trueV : IsValue .trueV
   | falseV : IsValue .falseV

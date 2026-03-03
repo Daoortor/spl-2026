@@ -7,6 +7,8 @@ abbrev la := LambdaTerm.abs
 instance : Coe String LambdaTerm where
   coe := .var
 
+#eval subst (.app (.boundV 0) (.boundV 1)) (.app (.boundV 0) (.boundV 2))
+
 -- Church booleans, numerals, recursion, etc.
 def cTrue : LambdaTerm := la "x" $ la "y" $ "x"
 def cFalse : LambdaTerm := la "x" $ la "y" $ "y"
@@ -22,16 +24,19 @@ def cSnd : LambdaTerm := la "p" $ "p" |$| cFalse
 
 def cZero : LambdaTerm := cFalse
 def cSucc : LambdaTerm := la "n" $ la "s" $ la "z" ("s" |$| ("n" |$| "s" |$| "z"))
-def cNum (n : ℕ) : LambdaTerm := n.repeat (cSucc |$| ·) cZero
+def cNum (n : ℕ) : LambdaTerm := la "s" $ la "z" $ n.repeat ("s" |$| ·) "z"
 def cPlus : LambdaTerm := la "m" $ la "n" $ la "s" $ la "z" ("m" |$| "s" |$| ("n" |$| "s" |$| "z"))
 def cTimes : LambdaTerm := la "m" $ la "n" $ la "s" $ la "z" ("m" |$| ("n" |$| "s") |$| "z")
 def cIsZro : LambdaTerm := la "n" $ "n" |$| (la "x" cFalse) |$| cTrue
 def _zz : LambdaTerm := cPair |$| cZero |$| cZero
 def _ss : LambdaTerm := la "p" $ cPair |$| (cSnd |$| "p") |$| (cPlus |$| (cNum 1) |$| (cSnd |$| "p"))
+def zo : LambdaTerm := cPair |$| cZero |$| cNum 1
+#eval NormalOrder.run 0 (removeNames $ ((la "s" $ la "z" ((la "t" $ "s" |$| "t") |$| ("s" |$| "z")))))
 def cPred : LambdaTerm := la "m" $ cFst |$| ("m" |$| _ss |$| _zz)
 def cSub : LambdaTerm := la "n" $ la "m" $ "n" |$| cPred |$| "m"
 def cEq : LambdaTerm := la "n" $ la "m" $ cAnd |$| (cIsZro |$| (cSub |$| "m" |$| "n")) |$| (cIsZro |$| (cSub |$| "n" |$| "m"))
-#eval CallByValue.run 410 (removeNames $ cEq |$| (cPred |$| cNum 4) |$| (cNum 3) |$| la "x" "true" |$| la "x" "false")
+-- #eval NormalOrder.run 21 (removeNames $ (cPred |$| cNum 3))
+-- #eval NormalOrder.run 4 (removeNames $ cNum 2)
 
 def cId : LambdaTerm := la "x" "x"
 
