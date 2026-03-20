@@ -272,7 +272,7 @@ theorem AlphaConversion'' : ∀ t₁ t₂ : LambdaTerm, ∀ d:ℕ, ∀ levels : 
       have ih := ih (t'.Subst x x') (d+1) (levels.insert x d) I_new
       rw[R_inner] at ih
 
-      -- ???
+      -- x!=x'
       have h_not_free : x ∉ FV t' := by sorry
 
       have h_bridge : removeNames' (d + 1) (levels.insert x' d) t' = removeNames' (d + 1) (levels.insert x d) (t'.Subst x x') := by
