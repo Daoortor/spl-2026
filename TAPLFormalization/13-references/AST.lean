@@ -120,6 +120,14 @@ inductive SmallStep : State → State → Prop where
 
 infix:90 "~>" => SmallStep
 
+@[grind, simp]
+def TyCtx.shift (Γ : TyCtx) (c : ℕ) (S : Typ) : TyCtx :=
+  fun x => if x < c then Γ x else if x = c then S else Γ (x-1)
+
+@[grind, simp]
+def TyCtx.insert_head (Γ : TyCtx) (ty : Typ) : TyCtx := Γ.shift 0 ty
+
+
 @[grind]
 inductive Typing : TyCtx → Sgm → Term → Typ → Prop where
   | Var : (Γ x = some T) →
@@ -141,6 +149,58 @@ inductive Typing : TyCtx → Sgm → Term → Typ → Prop where
     Typing Γ σ t₁ (.ref T₁₁) →
     Typing Γ σ t₂ T₁₁ →
     Typing Γ σ (.assn t₁ t₂) (.unit)
+
+lemma shiftInCtx : ∀ t Γ σ T S c, Typing Γ σ t T → Typing (Γ.shift c S) σ (shift c 1 t) T := by
+  intro t
+  induction t with
+  | abs T_body body ih =>
+    intro Γ σ T S c h
+    cases h
+    rename_i R meow
+    rw[shift]
+    have ih := ih (Γ.insert_head T_body) σ R S (c+1) meow
+    have nika : ((Γ.insert_head T_body).shift (c + 1) S) = (Γ.shift c S).insert_head T_body := by
+      apply funext
+      intro x
+      by_cases x = 0 <;> by_cases x<c+1 <;> try simp_all
+      grind
+      grind
+    rw[nika] at ih
+    exact Typing.Abs ih
+  | app t₁ t₂ it₁ it₂ =>
+    intro Γ σ T S c h
+    cases h
+    rename_i R meow nya
+    rw[shift]
+    constructor
+    have it₂₂ := it₂ Γ σ (?app.App.T₁₁) S c meow
+    exact it₁ Γ σ (R.func T) S c nya
+    exact it₂ Γ σ R S c meow
+  | ref t it =>
+    intro Γ σ T S c h
+    cases h
+    rename_i R meow
+    rw[shift]
+    constructor
+    exact it Γ σ R S c meow
+  | deref t it =>
+    intro Γ σ T S c h
+    cases h
+    rename_i meow
+    rw[shift]
+    constructor
+    exact it Γ σ (.ref T) S c meow
+  | assn t₁ t₂ it₁ it₂ =>
+    intro Γ σ T S c h
+    cases h
+    rename_i T meow nya
+    rw[shift]
+    constructor
+    exact it₁ Γ σ (Typ.ref ?assn.Assign.T₁₁) S c meow
+    exact it₂ Γ σ T S c nya
+  | _ => grind
+
+lemma insert_head_ty : Typing Γ σ t T → Typing (Γ.insert_head S) σ (shift 0 1 t) T := by grind[shiftInCtx]
 
 def StoreWellTyped (Γ : TyCtx) (σ : Sgm) (μ : Store) : Prop :=
   ∀ l, match σ l, μ l with
@@ -177,79 +237,7 @@ lemma weakening : Typing Γ σ t T → σ'.extends σ → Typing Γ σ' t T := b
   induction t_ty <;> try grind [Sgm.extends]
 
 
-
-lemma truncateIsGood : ∀ Γ Γ' x, x≠ 0 →Γ = truncate Γ'→ Γ' x = Γ (x-1) := by
-  intro Γ Γ' x h₁ h₂
-  rw[h₂, truncate]
-  grind
-
-@[grind, simp]
-def TyCtx.shift (Γ : TyCtx) (c : ℕ) (S : Typ) : TyCtx :=
-  fun x => if x < c then Γ x else if x = c then S else Γ (x-1)
-
-@[grind, simp]
-def TyCtx.insert_head (Γ : TyCtx) (ty : Typ) : TyCtx := Γ.shift 0 ty
-
-lemma shiftInCtx : ∀ t Γ σ T S c, Typing Γ σ t T → Typing (Γ.shift c S) σ (shift c 1 t) T := by
-  intro t
-  induction t with
-  | abs T_body body ih =>
-    intro Γ σ T S c h
-    cases h
-    rename_i Γ' R meow nya
-    rw[shift]
-    have nika₁ : Γ.shift c S = truncate (Γ'.shift (c+1) S) := by
-      apply funext
-      intro x
-      by_cases x < c <;> by_cases x = c  <;> by_cases x = c+1 <;> try simp_all
-      grind
-    have nika₂ : TyCtx.shift (Map.insert Γ' 0 T_body) (c+1) S = (Γ'.shift (c+1) S).insert 0 T_body := by
-      apply funext
-      intro x
-      by_cases x = c <;>by_cases x < c+1 <;> by_cases x = c+1 <;> try simp_all
-      grind
-    have ih := ih (Map.insert Γ' 0 T_body) σ R S (c+1) nya
-    rw[nika₂] at ih
-    exact Typing.Abs nika₁ ih
-  | app t₁ t₂ it₁ it₂ =>
-    intro Γ σ T S c h
-    cases h
-    rename_i R meow nya
-    rw[shift]
-    constructor
-    have it₂₂ := it₂ Γ σ (?app.App.T₁₁) S c meow
-    exact it₁ Γ σ (R.func T) S c nya
-    exact it₂ Γ σ R S c meow
-  | ref t it =>
-    intro Γ σ T S c h
-    cases h
-    rename_i R meow
-    rw[shift]
-    constructor
-    exact it Γ σ R S c meow
-  | deref t it =>
-    intro Γ σ T S c h
-    cases h
-    rename_i meow
-    rw[shift]
-    constructor
-    exact it Γ σ (.ref T) S c meow
-  | assn t₁ t₂ it₁ it₂ =>
-    intro Γ σ T S c h
-    cases h
-    rename_i T meow nya
-    rw[shift]
-    constructor
-    exact it₁ Γ σ (Typ.ref ?assn.Assign.T₁₁) S c meow
-    exact it₂ Γ σ T S c nya
-  | _ => grind
-
-
-
-lemma insert_head_ty : Typing Γ σ t T → Typing (Γ.insert_head S) σ (shift 0 1 t) T := by grind[shiftInCtx]
-
-
-lemma substitution : ∀ t s S T Γ x σ, (Typing (Γ.insert x S) σ t T ∧ Typing Γ σ s S → Typing Γ σ (Subst' x s t) T) := by
+lemma substitution : ∀ t s S T Γ x σ, (Typing (Γ.insert x S) σ t T ∧ Typing Γ σ s S → Typing Γ σ (sub' x s t) T) := by
   intro t
   induction t <;> try grind
   case var n =>
@@ -258,43 +246,25 @@ lemma substitution : ∀ t s S T Γ x σ, (Typing (Γ.insert x S) σ t T ∧ Typ
   case abs T t ih =>
     intro s S T₁ Γ l σ ⟨abs_ty, s_ty⟩
     cases abs_ty
-    rename_i Γ' T' Γ'_eq t_ty
-    rw [Subst']
-    let preΓ : TyCtx := Γ.insert_head T
-    --| Abs : (Γ' = truncate Γ) →
-    --Typing (insert Γ 0 T₁) σ t₂ T₂ →
-    --Typing Γ' σ (.abs T₁ t₂) (.func T₁ T₂)
-    -- t₂ = (Subst' (x + 1) (shift 0 1 s) t) =
-    --                          | maybe not
-    have ihh := ih (shift 0 1 s) S T' preΓ (l+1) σ
-    have nya : Typing preΓ σ (Subst' (l + 1) (shift 0 1 s) t) T' := by
-      apply ihh
-      constructor
-      ·
-        have unbite : ∀x, (Map.insert Γ' 0 T) x = (Map.insert preΓ (l+1) S) x := by
+    rename_i R meow
+    rw [sub']
+    have : Typing (Γ.insert_head T) σ (sub' (l+1) (shift 0 1 s) t) R := by
+      have : Typing (Map.insert (Γ.insert_head T) (l+1) S) σ t R := by
+        have nika: Map.insert (Γ.insert_head T) (l+1) S = (TyCtx.insert_head (Map.insert Γ l S) T) := by
+          apply funext
           intro x
-          by_cases h1 : x = 0 <;> by_cases h2 : x = l+1 <;> (unfold preΓ; simp_all)
-          have lisa:l+1≠0:= by grind
-          have nika := truncateIsGood (Map.insert Γ l S) Γ' (l+1) lisa Γ'_eq
+          by_cases x = 0 <;> by_cases x = l+1 <;>try simp_all
           grind
-          have nika := truncateIsGood (Map.insert Γ l S) Γ' x h1 Γ'_eq
-          grind
-        have unbite_you : Map.insert Γ' 0 T = Map.insert preΓ (l+1) S := by grind
-        grind
-      · unfold preΓ
-        apply insert_head_ty
-        exact s_ty
-    have meow1 : preΓ = preΓ.insert 0 T := by
-      have A : ∀ x, preΓ x = (preΓ.insert 0 T) x := by
-        intro x
-        by_cases h: x=0 <;> simp [preΓ, TyCtx.insert_head, h]
-      exact funext A
-    have meow2 : Γ = truncate preΓ := by
-      have A : ∀ x, Γ x = (truncate preΓ) x := by
-        intro x
-        by_cases h: x=0 <;> simp[preΓ, TyCtx.insert_head, h]
-      exact funext A
+        rw[nika]
+        exact meow
+      have : Typing (Γ.insert_head T) σ (shift 0 1 s) S := by grind[shiftInCtx]
+      grind
     grind
+
+@[simp, grind]
+lemma extends_insert : σ l = none → Sgm.extends (σ.insert l T) σ := by
+  intro l_free l' v l'_some
+  grind
 
 set_option maxHeartbeats 300000
 
@@ -321,6 +291,24 @@ lemma storeWellTyped_insert : Typing Γ σ v T → μ l = none → StoreWellType
       | some T' =>
         let ⟨v', _⟩ : ∃ v', μ l' = some v' := by grind [StoreWellTyped]
         apply co₁ T' v' <;> grind
+
+lemma shiftUpDown : shiftDown (shift 0 1 s) = s := by
+  induction s <;> try simp [shift, shiftDown, shiftDown']
+  stop sorry
+
+lemma substitution' : Typing (Γ.insert_head S) σ body T
+  → Typing Γ σ s S
+  → Typing Γ σ (shiftDown (sub (shift 0 1 s) body)) T := by
+  intro body_ty s_ty
+  induction body with
+  | var n =>
+    cases n
+    case zero =>
+      cases body_ty
+      simp [sub]
+      sorry
+    sorry
+  | _ => sorry
 
 theorem preservation : Typing Γ σ t T → StoreWellTyped Γ σ μ
   → ⟨t, μ⟩ ~> ⟨t', μ'⟩
@@ -406,8 +394,8 @@ theorem preservation : Typing Γ σ t T → StoreWellTyped Γ σ μ
       · cases t_ty
         rename_i S meow nya
         cases nya
+        apply substitution' <;> assumption
         --substitution : ∀ t s S T Γ x σ, (Typing (Γ.insert x S) σ t T ∧ Typing Γ σ s S → Typing Γ σ (Subst' x s t) T)
-        sorry
       · assumption
 
 theorem progress : Typing ∅ σ t T
