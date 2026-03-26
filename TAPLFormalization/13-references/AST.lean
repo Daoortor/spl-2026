@@ -292,23 +292,69 @@ lemma storeWellTyped_insert : Typing Γ σ v T → μ l = none → StoreWellType
         let ⟨v', _⟩ : ∃ v', μ l' = some v' := by grind [StoreWellTyped]
         apply co₁ T' v' <;> grind
 
-lemma shiftUpDown : shiftDown (shift 0 1 s) = s := by
-  induction s <;> try simp [shift, shiftDown, shiftDown']
+@[simp, grind]
+lemma shiftUpDown : shiftDown' n (shift n 1 s) = s := by
+  induction s generalizing n <;> grind [shift, shiftDown']
+
+inductive DoesNotContain : ℕ → Term → Prop
+  | var : k ≠ n → DoesNotContain n (.var k)
+  | app : DoesNotContain n t₁ → DoesNotContain n t₂
+    → DoesNotContain n (.app t₁ t₂)
+  | abs : DoesNotContain (n+1) t → DoesNotContain n (.abs T t)
+  | unit : DoesNotContain n .unit
+  | ref : DoesNotContain n t → DoesNotContain n (.ref t)
+  | deref : DoesNotContain n t → DoesNotContain n (.deref t)
+  | assn : DoesNotContain n t₁ → DoesNotContain n t₂
+    → DoesNotContain n (.assn t₁ t₂)
+  | loc : DoesNotContain n (.loc l)
+
+abbrev ZeroFree := DoesNotContain 0
+
+lemma shiftDoesNotContain : DoesNotContain n (shift n 1 s) := by
+  induction s generalizing n <;> try grind [DoesNotContain, shift]
+
+lemma shiftZeroFree : ZeroFree (shift 0 1 s) := shiftDoesNotContain
+
+@[simp, grind]
+lemma shiftDNCSucc (k : ℕ) : k ≤ n → DoesNotContain n s → DoesNotContain (n+1) (shift k 1 s) := by
+  intro k_le_n n_dnc
+  induction s generalizing n k <;> grind [DoesNotContain]
+
+lemma subZeroFree : DoesNotContain n s → DoesNotContain n (sub' n s t) := by
+  intro s_zf
+  induction t generalizing n s <;> try grind [shiftZeroFree, DoesNotContain]
+
+lemma nika' : ZeroFree s → Typing (Γ.insert_head S) σ (sub s t) T
+  → Typing Γ σ (shiftDown (sub s t)) T := by
+  intro s_zf ty
+  let q_zf : ZeroFree (sub s t) := by grind [subZeroFree]
+  generalize h : sub s t = q
+  rw [h] at q_zf
+  stop sorry
+
+lemma nika : ZeroFree t → Typing (Γ.insert_head S) σ t T
+  → Typing Γ σ (shiftDown' k t) T := by
+  intro t_zf t_ty
+  induction t
+  case abs S' body ih =>
+    rw [shiftDown, shiftDown']
+    cases t_ty
+    sorry
   stop sorry
 
 lemma substitution' : Typing (Γ.insert_head S) σ body T
   → Typing Γ σ s S
   → Typing Γ σ (shiftDown (sub (shift 0 1 s) body)) T := by
   intro body_ty s_ty
-  induction body with
-  | var n =>
-    cases n
-    case zero =>
-      cases body_ty
-      simp [sub]
-      sorry
+  induction body generalizing T <;> try grind [sub', shiftDown']
+  case var n =>
+    cases n <;> cases body_ty <;> grind [TyCtx.insert_head, sub', shiftDown']
+  case abs T_arg body ih =>
+    cases body_ty
+    rename_i T body_ty
+    simp [sub', shiftDown']
+    constructor
     sorry
-  | _ => sorry
 
 theorem preservation : Typing Γ σ t T → StoreWellTyped Γ σ μ
   → ⟨t, μ⟩ ~> ⟨t', μ'⟩
