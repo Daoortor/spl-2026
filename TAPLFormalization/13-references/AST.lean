@@ -237,6 +237,23 @@ lemma storeWellTyped_insert : Typing Γ σ v T → μ l = none → StoreWellType
         let ⟨v', _⟩ : ∃ v', μ l' = some v' := by grind [StoreWellTyped]
         apply co₁ T' v' <;> grind
 
+lemma shiftUpDown : shiftDown (shift 0 1 s) = s := by
+  induction s <;> try simp [shift, shiftDown, shiftDown']
+  stop sorry
+
+lemma substitution' : Typing (Γ.insert_head S) σ body T
+  → Typing Γ σ s S
+  → Typing Γ σ (shiftDown (sub (shift 0 1 s) body)) T := by
+  intro body_ty s_ty
+  induction body
+  case var n =>
+    cases n
+    case zero =>
+      cases body_ty
+      simp [sub]
+    sorry
+  sorry
+
 theorem preservation : Typing Γ σ t T → StoreWellTyped Γ σ μ
   → ⟨t, μ⟩ ~> ⟨t', μ'⟩
   → ∃ σ', σ'.extends σ ∧ Typing Γ σ' t' T ∧ StoreWellTyped Γ σ' μ' := by
@@ -321,8 +338,8 @@ theorem preservation : Typing Γ σ t T → StoreWellTyped Γ σ μ
       · cases t_ty
         rename_i S meow nya
         cases nya
+        apply substitution' <;> assumption
         --substitution : ∀ t s S T Γ x σ, (Typing (Γ.insert x S) σ t T ∧ Typing Γ σ s S → Typing Γ σ (Subst' x s t) T)
-        sorry
       · assumption
 
 theorem progress : Typing ∅ σ t T
