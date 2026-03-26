@@ -130,7 +130,6 @@ def TyCtx.shift (Γ : TyCtx) (c : ℕ) (S : Typ) : TyCtx :=
 @[grind, simp]
 def TyCtx.insert_head (Γ : TyCtx) (ty : Typ) : TyCtx := Γ.shift 0 ty
 
-
 @[grind]
 inductive Typing : TyCtx → Sgm → Term → Typ → Prop where
   | Var : (Γ x = some T) →
@@ -240,7 +239,6 @@ lemma weakening : Typing Γ σ t T → σ'.extends σ → Typing Γ σ' t T := b
   intro t_ty sig_ext
   induction t_ty <;> try grind [Sgm.extends]
 
-
 lemma substitution : ∀ t s S T Γ x σ, (Typing (Γ.insert x S) σ t T ∧ Typing Γ σ s S → Typing Γ σ (sub' x s t) T) := by
   intro t
   induction t <;> try grind
@@ -259,7 +257,7 @@ lemma substitution : ∀ t s S T Γ x σ, (Typing (Γ.insert x S) σ t T ∧ Typ
           intro x
           by_cases x = 0 <;> by_cases x = l+1 <;>try simp_all
           grind
-        rw[nika]
+        rw [nika]
         exact meow
       have : Typing (Γ.insert_head T) σ (shift 0 1 s) S := by grind[shiftInCtx]
       grind
@@ -328,23 +326,19 @@ lemma subZeroFree : DoesNotContain n s → DoesNotContain n (sub' n s t) := by
   intro s_zf
   induction t generalizing n s <;> try grind [shiftZeroFree, DoesNotContain]
 
-lemma nika' : ZeroFree s → Typing (Γ.insert_head S) σ (sub s t) T
-  → Typing Γ σ (shiftDown (sub s t)) T := by
-  intro s_zf ty
-  let q_zf : ZeroFree (sub s t) := by grind [subZeroFree]
-  generalize h : sub s t = q
-  rw [h] at q_zf
-  stop sorry
+@[simp, grind]
+lemma insert_head_shift_comm {Γ : TyCtx}
+  : (Γ.shift k S).insert_head S' = (Γ.insert_head S').shift (k + 1) S := by
+  simp
+  grind [shift]
 
-lemma nika : ZeroFree t → Typing (Γ.insert_head S) σ t T
+lemma nika : DoesNotContain k t → Typing (Γ.shift k S) σ t T
   → Typing Γ σ (shiftDown' k t) T := by
   intro t_zf t_ty
-  induction t
-  case abs S' body ih =>
-    rw [shiftDown, shiftDown']
+  induction t generalizing k Γ T <;> try grind [DoesNotContain, Typing, shift]
+  case var m =>
     cases t_ty
-    sorry
-  stop sorry
+    grind [DoesNotContain, Typing, shift]
 
 lemma substitution' : Typing (Γ.insert_head S) σ t T
   → Typing Γ σ s S
@@ -353,15 +347,17 @@ lemma substitution' : Typing (Γ.insert_head S) σ t T
   have bite:  Typing (Γ.insert_head S) σ (shift 0 1 s) S := by
     have unbite:= shiftInCtx s Γ σ S S 0 nya
     grind
-  have nika : Typing (Γ.insert_head S) σ (sub' 0 (shift 0 1 s) t) T:= by
+  have not_nika : Typing (Γ.insert_head S) σ (sub' 0 (shift 0 1 s) t) T:= by
     have unbite: (Map.insert (Γ.insert_head S) 0 S) = (Γ.insert_head S):= by
       apply funext
       intro x
       by_cases x=0<;> simp_all
     rw[← unbite] at meow
     exact substitution t (shift 0 1 s) S T (Γ.insert_head S) 0 σ ⟨meow, bite ⟩
+  apply nika ?_ not_nika
+  apply subZeroFree
+  exact shiftDoesNotContain
 
-  sorry
 theorem preservation : Typing Γ σ t T → StoreWellTyped Γ σ μ
   → ⟨t, μ⟩ ~> ⟨t', μ'⟩
   → ∃ σ', σ'.extends σ ∧ Typing Γ σ' t' T ∧ StoreWellTyped Γ σ' μ' := by
@@ -490,8 +486,7 @@ theorem progress : ∀ t T σ, Typing ∅ σ t T
         grind
       · have it:= it T.ref σ meow
         have it : ∀ (μ : Store), hasSpace μ → StoreWellTyped ∅ σ μ → ∃ t' μ', (t, μ)~>(t', μ'):= by
-
-          grind
+          sorry
         simp_all
         have it:= it μ
 
