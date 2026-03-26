@@ -458,7 +458,28 @@ theorem progress : ∀ t T σ, Typing ∅ σ t T
   | var x =>
     intro T σ meow
     contradiction
-  | app t₁ t₂ it₁ it₂ => sorry
+  | app t₁ t₂ it₁ it₂ =>
+    intro T σ meow
+    cases meow
+    rename_i T meow nya
+    have : ∀ (μ : Store), hasSpace μ → StoreWellTyped ∅ σ μ → ∃ t' μ', (t₁.app t₂, μ)~>(t', μ') := by
+      intro μ bite unbite
+      by_cases h₁: IsVal t₁
+      · by_cases h₂ : IsVal t₂
+        · cases h₁ <;> try grind
+          rename_i S R s
+          have : SmallStep ⟨.app (.abs R s) t₂, μ⟩ ⟨shiftDown (sub (shift 0 1 t₂) s), μ⟩ := SmallStep.appAbs h₂
+          grind
+        · have it₂ := it₂ T σ meow
+          have ⟨t',μ',it⟩ := it₂.resolve_left h₂ μ bite unbite
+          have := SmallStep.app2 h₁ it
+          grind
+      · rename_i T'
+        have it₁ := it₁ (T.func T') σ nya
+        have ⟨t',μ',it⟩ := it₁.resolve_left h₁ μ bite unbite
+        have : SmallStep ⟨.app t₁ t₂, μ⟩ ⟨.app t' t₂, μ'⟩:= SmallStep.app1 it
+        grind
+    grind
   | ref t it =>
     intro T σ meow
     cases meow
@@ -489,26 +510,31 @@ theorem progress : ∀ t T σ, Typing ∅ σ t T
         have := SmallStep.DerefLoc nika
         grind
       · have it:= it T.ref σ meow
-        have it : ∀ (μ : Store), hasSpace μ → StoreWellTyped ∅ σ μ → ∃ t' μ', (t, μ)~>(t', μ'):= by
-
-          grind
-        simp_all
-        have it:= it μ
-
-
-        sorry
-
-      -- SmallStep.deref
-      /-
-       | DerefLoc {l:ℕ} : (h : μ l = some v) →
-    SmallStep ⟨.deref (.loc l), μ⟩ ⟨v.1, μ⟩
-  | Deref :
-    SmallStep ⟨t, μ⟩ ⟨t', μ'⟩ →
-    SmallStep ⟨.deref t, μ⟩ ⟨.deref t', μ'⟩
-      -/
-
+        have ⟨t',μ',it⟩ := it.resolve_left unbite μ ⟨l,il⟩ nya
+        have := SmallStep.Deref it
+        grind
     grind
-  | assn t₁ t₂ it₁ it₂ => sorry
+  | assn t₁ t₂ it₁ it₂ =>
+    intro T σ meow
+    cases meow
+    rename_i T meow nya
+    have : ∀ (μ : Store), hasSpace μ → StoreWellTyped ∅ σ μ → ∃ t' μ', (t₁.assn t₂, μ)~>(t', μ') := by
+      intro μ bite unbite
+      by_cases h₁: IsVal t₁
+      · by_cases h₂ : IsVal t₂
+        · cases h₁ <;> try grind
+          rename_i l
+          have : SmallStep ⟨.assn (.loc l) t₂, μ⟩ ⟨.unit, μ.insert l ⟨t₂,h₂⟩⟩ := SmallStep.Assign h₂
+          grind
+        · have it₂ := it₂ T σ nya
+          have ⟨t',μ',it⟩ := it₂.resolve_left h₂ μ bite unbite
+          have := SmallStep.Assign2 h₁ it
+          grind
+      · have it₁ := it₁ T.ref σ meow
+        have ⟨t',μ',it⟩ := it₁.resolve_left h₁ μ bite unbite
+        have : SmallStep ⟨.assn t₁ t₂, μ⟩ ⟨.assn t' t₂, μ'⟩ := SmallStep.Assign1 it
+        grind
+    grind
   | _ => grind
 
 theorem unbites_you : False := by sorry
