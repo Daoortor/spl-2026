@@ -33,6 +33,8 @@ def cEq : LambdaTerm := la "n" $ la "m" $ cAnd |$| (cIsZro |$| (cSub |$| "m" |$|
 infix:100 " ~> " => CV.SmallStep
 def cId : LambdaTerm := la "x" "x"
 
+#eval removeNames $ cTrue
+
 def test1 := removeNames (cFst |$| (cPair |$| la "" "v" |$| la "" "w"))
 def res := CV.getNF 10 test1
 #eval res
