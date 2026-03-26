@@ -16,6 +16,7 @@ inductive Term : Type where
   | assn : Term → Term → Term
   | loc : ℕ → Term
 
+@[grind]
 inductive IsVal : Term → Prop where
   | is_unit : IsVal Term.unit
   | is_abs : IsVal (Term.abs T t)
@@ -73,6 +74,7 @@ def sub' (n : ℕ) (v : Term) : Term → Term
 
 abbrev sub := sub' 0
 
+@[simp, grind]
 def shiftDown' (n : ℕ) : Term → Term
   | .var k => if k<n then
       .var k
@@ -90,6 +92,7 @@ abbrev shiftDown := shiftDown' 0
 
 example : sub .unit (.app (.var 0) (.var 1)) = .app .unit (.var 1) := by simp
 
+@[grind]
 inductive SmallStep : State → State → Prop where
   | app1 :
     SmallStep ⟨t₁, μ⟩ ⟨t₁', μ'⟩ →
@@ -202,6 +205,7 @@ lemma shiftInCtx : ∀ t Γ σ T S c, Typing Γ σ t T → Typing (Γ.shift c S)
 
 lemma insert_head_ty : Typing Γ σ t T → Typing (Γ.insert_head S) σ (shift 0 1 t) T := by grind[shiftInCtx]
 
+@[simp, grind]
 def StoreWellTyped (Γ : TyCtx) (σ : Sgm) (μ : Store) : Prop :=
   ∀ l, match σ l, μ l with
     | some T, some v => Typing Γ σ v.val T
@@ -342,20 +346,22 @@ lemma nika : ZeroFree t → Typing (Γ.insert_head S) σ t T
     sorry
   stop sorry
 
-lemma substitution' : Typing (Γ.insert_head S) σ body T
+lemma substitution' : Typing (Γ.insert_head S) σ t T
   → Typing Γ σ s S
-  → Typing Γ σ (shiftDown (sub (shift 0 1 s) body)) T := by
-  intro body_ty s_ty
-  induction body generalizing T <;> try grind [sub', shiftDown']
-  case var n =>
-    cases n <;> cases body_ty <;> grind [TyCtx.insert_head, sub', shiftDown']
-  case abs T_arg body ih =>
-    cases body_ty
-    rename_i T body_ty
-    simp [sub', shiftDown']
-    constructor
-    sorry
+  → Typing Γ σ (shiftDown (sub (shift 0 1 s) t)) T := by
+  intro meow nya
+  have bite:  Typing (Γ.insert_head S) σ (shift 0 1 s) S := by
+    have unbite:= shiftInCtx s Γ σ S S 0 nya
+    grind
+  have nika : Typing (Γ.insert_head S) σ (sub' 0 (shift 0 1 s) t) T:= by
+    have unbite: (Map.insert (Γ.insert_head S) 0 S) = (Γ.insert_head S):= by
+      apply funext
+      intro x
+      by_cases x=0<;> simp_all
+    rw[← unbite] at meow
+    exact substitution t (shift 0 1 s) S T (Γ.insert_head S) 0 σ ⟨meow, bite ⟩
 
+  sorry
 theorem preservation : Typing Γ σ t T → StoreWellTyped Γ σ μ
   → ⟨t, μ⟩ ~> ⟨t', μ'⟩
   → ∃ σ', σ'.extends σ ∧ Typing Γ σ' t' T ∧ StoreWellTyped Γ σ' μ' := by
@@ -441,11 +447,68 @@ theorem preservation : Typing Γ σ t T → StoreWellTyped Γ σ μ
         rename_i S meow nya
         cases nya
         apply substitution' <;> assumption
-        --substitution : ∀ t s S T Γ x σ, (Typing (Γ.insert x S) σ t T ∧ Typing Γ σ s S → Typing Γ σ (Subst' x s t) T)
       · assumption
 
-theorem progress : Typing ∅ σ t T
-  → IsVal t ∨ (∀ μ, StoreWellTyped ∅ σ μ → ∃ t' μ', ⟨t, μ⟩ ~> ⟨t', μ'⟩) := by
-  sorry
+abbrev hasSpace (μ : Store) : Prop := ∃ l, μ l = none
+
+theorem progress : ∀ t T σ, Typing ∅ σ t T
+  → IsVal t ∨ (∀ μ, hasSpace μ → StoreWellTyped ∅ σ μ → ∃ t' μ', ⟨t, μ⟩ ~> ⟨t', μ'⟩) := by
+  intro t
+  induction t with
+  | var x =>
+    intro T σ meow
+    contradiction
+  | app t₁ t₂ it₁ it₂ => sorry
+  | ref t it =>
+    intro T σ meow
+    cases meow
+    rename_i T meow
+    have bite: ∀ (μ : Store), hasSpace μ → StoreWellTyped ∅ σ μ → ∃ t' μ', (t.ref, μ)~>(t', μ') := by
+      intro μ ⟨l,il⟩ nya
+      have it:= it T σ meow
+      cases it
+      · rename_i unbite
+        have := SmallStep.RefV unbite il
+        grind
+      · rename_i unbite
+        have ⟨t',μ',unbite⟩:=unbite μ ⟨l,il⟩ nya
+        have := SmallStep.Ref unbite
+        grind
+    grind
+  | deref t it =>
+    intro T σ meow
+    cases meow
+    rename_i meow
+    have bite: ∀ (μ : Store), hasSpace μ → StoreWellTyped ∅ σ μ → ∃ t' μ', (t.deref, μ)~>(t', μ') := by
+      intro μ ⟨l,il⟩ nya
+      by_cases unbite : IsVal t
+      · cases meow <;> try grind
+        rename_i l' meow
+        have nika: ∃ v, μ l' = some v := by grind
+        have ⟨v, nika⟩ := nika
+        have := SmallStep.DerefLoc nika
+        grind
+      · have it:= it T.ref σ meow
+        have it : ∀ (μ : Store), hasSpace μ → StoreWellTyped ∅ σ μ → ∃ t' μ', (t, μ)~>(t', μ'):= by
+
+          grind
+        simp_all
+        have it:= it μ
+
+
+        sorry
+
+      -- SmallStep.deref
+      /-
+       | DerefLoc {l:ℕ} : (h : μ l = some v) →
+    SmallStep ⟨.deref (.loc l), μ⟩ ⟨v.1, μ⟩
+  | Deref :
+    SmallStep ⟨t, μ⟩ ⟨t', μ'⟩ →
+    SmallStep ⟨.deref t, μ⟩ ⟨.deref t', μ'⟩
+      -/
+
+    grind
+  | assn t₁ t₂ it₁ it₂ => sorry
+  | _ => grind
 
 theorem unbites_you : False := by sorry
