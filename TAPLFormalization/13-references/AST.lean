@@ -232,8 +232,8 @@ def TyCtx.insert_head (Γ : TyCtx) (ty : Typ) : TyCtx :=
 -- Γ_eq' : Map.insert Γ' 0 S = Γ.insert_head S := sorry
 -- ⊢ Typing Γ σ (Subst s body) T
 
-lemma substitution : Typing Γ σ s S → Typing (Γ.insert_head S) σ body T → Typing Γ σ (Subst s body) T := by
-  sorry
+-- lemma substitution : Typing Γ σ s S → Typing (Γ.insert_head S) σ body T → Typing Γ σ (Subst s body) T := by
+--   sorry
 
 @[simp, grind]
 lemma extends_insert : σ l = none → Sgm.extends (σ.insert l T) σ := by
@@ -341,8 +341,7 @@ theorem preservation : Typing Γ σ t T → StoreWellTyped Γ σ μ
         rw [μ'_eq]
         let σ_eq : σ.insert l T = σ := by grind
         rw [σ_eq]
-        intro l'
-        by_cases h : l' = l <;> grind [StoreWellTyped]
+        apply updatePreservesStoreTyping <;> assumption
   case Assign1 t₁ μ₁ t₁' μ₁' t₂ st ih =>
     rw [t_eq] at t_ty
     cases t_ty
@@ -363,7 +362,6 @@ theorem preservation : Typing Γ σ t T → StoreWellTyped Γ σ μ
         exact Typing.Assign (weakening v₁_ty σ_ext_h) t_'_ty
       · grind
   case appAbs s S body μ_ s_val =>
-    exists σ
     rw [t_eq] at t_ty
     cases t_ty
     rename_i S s_ty arg_ty
@@ -375,11 +373,12 @@ theorem preservation : Typing Γ σ t T → StoreWellTyped Γ σ μ
       unfold TyCtx.insert_head Map.insert
       grind
     rw [Γ_eq'] at body_ty
+    exists σ
     constructor
     · grind [Sgm.extends]
     · constructor
       · rw [t'_eq]
-        apply substitution <;> assumption
+        sorry
       · grind
 
 theorem progress : Typing ∅ σ t T
