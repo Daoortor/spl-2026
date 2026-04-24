@@ -97,6 +97,7 @@ inductive SmallStep : Term → Term → Prop where
     SmallStep (.app v₁ t₂) (.app v₁ t₂')
   | appAbs : (IsVal v₂) →
     SmallStep (.app (.abs T₁₁ t₁₂) v₂) (shiftDown (sub (shift 0 1 v₂) t₁₂))
+  | record : 
 
 infix:90 "~>" => SmallStep
 
