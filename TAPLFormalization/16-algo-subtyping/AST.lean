@@ -180,14 +180,12 @@ inductive Typing : TyCtx → Term → Typ → Prop where
     Typing Γ (.app t₁ t₂) T₂
   | sub : Typing Γ t S → S <: T → Typing Γ t T
   | record :
-
     (_ : ls.length = ts.length) →
     (_ : ls.length = tys.length) →
-    ∀ i, (_ : i < ls.length) → Typing Γ ts[i] tys[i] →
+    (∀ i : Fin ls.length, Typing Γ ts[i] tys[i]) →
     Typing Γ (.record ls ts) (.record ls tys)
-  | proj (i : ℕ) :
+  | proj (i : Fin ls.length) :
     (_ : ls.length = tys.length) →
-    (_ : i < ls.length) →
     Typing Γ t (.record ls tys) →
     Typing Γ (.proj t ls[i]) tys[i]
 
@@ -273,14 +271,12 @@ theorem algoSubT_of_subT : SubT S T → AlgoSubT S T := by
     apply AlgoSubT.rcd
     case inj => exact fun i => ⟨i, by grind⟩
     any_goals grind
-    · change ∀ (i : Fin ls'.length), ls[i]'(by grind) = ls'[i]
-      intro _
+    · intro _
       apply Eq.symm
       rw [SList.IsPrefix] at hpref'
       apply List.IsPrefix.getElem
       assumption
-    · change ∀ (i : Fin ls'.length), AlgoSubT (tys[i]'(by grind)) tys'[i]
-      intro i
+    · intro i
       suffices tys[i]'(by grind) = tys'[i] by grind [AlgoSubT.refl]
       apply Eq.symm
       apply List.IsPrefix.getElem
@@ -288,13 +284,7 @@ theorem algoSubT_of_subT : SubT S T → AlgoSubT S T := by
   case rcdDepth =>
     apply AlgoSubT.rcd
     case inj => exact id
-    any_goals grind
-    · intro ty ty_mem
-      let ⟨i, eq⟩ := List.getElem?_of_mem ty_mem
-      grind
-    · intro ty ty_mem
-      let ⟨i, eq⟩ := List.getElem?_of_mem ty_mem
-      grind
+    all_goals grind [List.getElem?_of_mem]
   case rcdPerm tys tys' ls ls' tys_wf tys'_wf ls_eq tys_eq tys'_eq bij bij_h =>
     apply AlgoSubT.rcd
     case inj => exact fun i => bij ⟨i, by grind⟩
@@ -304,3 +294,40 @@ theorem algoSubT_of_subT : SubT S T → AlgoSubT S T := by
     · intro i
       rw [(bij_h ⟨i, by grind⟩).right]
       exact AlgoSubT.refl (by grind)
+
+theorem subT_of_algoSubT : AlgoSubT S T → SubT S T := by
+  intro asub
+  induction asub <;> try grind [SubT.top, SubT.arrow]
+  · sorry
+
+theorem algoSubT_iff_subT : AlgoSubT S T ↔ SubT S T :=
+  .intro subT_of_algoSubT algoSubT_of_subT
+
+inductive AlgoTyping : TyCtx → Term → Typ → Prop where
+  | var : WellFormed T → (Γ[x]? = some T) →
+    AlgoTyping Γ (.var x) T
+  | abs :
+    WellFormed T₁ →
+    AlgoTyping (T₁ :: Γ) t₂ T₂ →
+    AlgoTyping Γ (.abs T₁ t₂) (.arrow T₁ T₂)
+  | app :
+    AlgoTyping Γ t₁ (.arrow T₁₁ T₁₂) →
+    AlgoTyping Γ t₂ T₂ →
+    AlgoSubT T₂ T₁₁ →
+    AlgoTyping Γ (.app t₁ t₂) T₁₂
+  | record :
+    (_ : ls.length = ts.length) →
+    (_ : ls.length = tys.length) →
+    (∀ i : Fin ls.length, AlgoTyping Γ ts[i] tys[i]) →
+    AlgoTyping Γ (.record ls ts) (.record ls tys)
+  | proj (i : Fin ls.length) :
+    (_ : ls.length = tys.length) →
+    AlgoTyping Γ t (.record ls tys) →
+    AlgoTyping Γ (.proj t ls[i]) tys[i]
+
+theorem typing_of_algoTyping : AlgoTyping Γ t T → Typing Γ t T := by
+  intro atyp
+  induction atyp <;> try grind [Typing, subT_of_algoSubT]
+
+theorem algoTyping_of_typing : Typing Γ t T → ∃ S, S <: T ∧ AlgoTyping Γ t S := by
+  sorry
