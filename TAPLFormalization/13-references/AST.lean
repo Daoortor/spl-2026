@@ -532,10 +532,3 @@ theorem progress : ∀ t T σ, Typing ∅ σ t T
         grind
     grind
   | _ => grind
-
-def bites_you (name : String) : Bool := match name with
-  | "Lanka" => true
-  | "Iva" => sorry
-  | "Komi" => true
-  | "nika" => true
-  | _ => false
