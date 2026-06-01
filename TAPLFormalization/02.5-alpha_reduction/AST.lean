@@ -6,7 +6,6 @@ inductive LambdaTerm where
   | app (t₁ t₂ : LambdaTerm) : LambdaTerm
   deriving DecidableEq
 
--- 1. Use Finset instead of Std.HashSet for seamless interaction with Prop
 def FV : LambdaTerm → Finset String
   | .var x => {x}
   | .abs arg body => (FV body).erase arg
@@ -17,9 +16,8 @@ inductive IndexedTerm where
   | boundV (index : ℕ) : IndexedTerm
   | app (t₁ t₂ : IndexedTerm) : IndexedTerm
   | abs (body : IndexedTerm) : IndexedTerm
-  deriving DecidableEq
+deriving DecidableEq
 
--- 2. Define the extensional Environment as a pure function
 @[simp]
 def Env := String → Option ℕ
 
@@ -58,44 +56,6 @@ inductive Alpha : LambdaTerm → LambdaTerm → Prop
   | app {v v' w w' : LambdaTerm} : Alpha v v' → Alpha w w' → Alpha (.app v w) (.app v' w')
   | abs {x x' : String} {t t' : LambdaTerm} :
       (x ∉ FV t'∨ x=x') → Alpha t (t'.Subst x x') → Alpha (.abs x t) (.abs x' t')
-/-
-example  {x y z :String} {_:x≠ y} {_:x≠ z}{_:y≠ z}:
-Alpha (.abs x (.abs y (.abs z ((LambdaTerm.var x).app ((LambdaTerm.var y).app (LambdaTerm.var z)) ))))
-(.abs z (.abs x (.abs y ((LambdaTerm.var z).app ((LambdaTerm.var x).app (LambdaTerm.var y)) )))):= by
-  have : y≠ x := sorry
-  by_cases h1: x=y <;>by_cases h2: x=z <;>by_cases h2: y=z <;>simp_all![Alpha, LambdaTerm.Subst, FV]
-  constructor
-  · left
-    sorry
-  · simp_all
-    constructor
-    · left
-      sorry
-    · simp_all
-      constructor
-      · right
-        rfl
-      · simp_all
-        repeat constructor
-
-
-λx.t∼λx'.t'
-1)x=x' t∼t'
-2)x≠x'
-x, x'∉ FV(λx.t)
-x, x'∉ FV(λx'.t')
-
-λx'.t'->λx.(t'.Subst x x')
-
-
-
-
-
-
-
-
-
--/
 
 def removeNames : LambdaTerm → IndexedTerm :=
   removeNames' 0 Env.empty
